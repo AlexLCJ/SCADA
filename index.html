@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Z-TEK 工业监控系统 V3.0</title>
+    <!-- 引入 Tailwind CSS 进行快速布局 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 工业风格自定义字体与特效 */
+        @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
+
+        body {
+            background-color: #121212;
+            color: #e0e0e0;
+            font-family: 'Roboto', sans-serif;
+            overflow: hidden; /* 防止滚动 */
+        }
+
+        /* 模拟LCD液晶显示屏效果 */
+        .lcd-text {
+            font-family: 'Share Tech Mono', monospace;
+            color: #00ff41;
+            text-shadow: 0 0 5px rgba(0, 255, 65, 0.5);
+            letter-spacing: 2px;
+        }
+
+        .lcd-panel {
+            background: #000;
+            border: 2px solid #333;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.8);
+            position: relative;
+        }
+        
+        /* 扫描线效果 (增加真实感和识别难度) */
+        .lcd-panel::after {
+            content: " ";
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            z-index: 2;
+            background-size: 100% 2px, 3px 100%;
+            pointer-events: none;
+        }
+
+        /* 报警状态颜色 */
+        .alarm-state .lcd-text {
+            color: #ff3333;
+            text-shadow: 0 0 10px rgba(255, 51, 51, 0.8);
+            animation: blink 0.5s infinite alternate;
+        }
+        
+        .alarm-bg {
+            background-color: #3f0e0e !important;
+            border-color: #ff3333 !important;
+        }
+
+        @keyframes blink {
+            from { opacity: 1; }
+            to { opacity: 0.6; }
+        }
+
+        /* 工业按钮样式 */
+        .industrial-btn {
+            background: linear-gradient(to bottom, #4a4a4a, #2b2b2b);
+            border: 1px solid #1a1a1a;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.1), 0 2px 4px rgba(0,0,0,0.5);
+            transition: all 0.1s;
+        }
+        .industrial-btn:active {
+            background: #222;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);
+            transform: translateY(2px);
+        }
+        .industrial-btn.active-cooling {
+            background: linear-gradient(to bottom, #0055aa, #003366);
+            border: 1px solid #0077cc;
+            color: white;
+            box-shadow: 0 0 10px #0077cc;
+        }
+
+        /* 面板容器风格 */
+        .panel {
+            background-color: #1e1e1e;
+            border: 1px solid #333;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+        .panel-header {
+            background-color: #252525;
+            border-bottom: 1px solid #333;
+            padding: 8px 12px;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #888;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col p-2 select-none">
+
+    <!-- 顶部状态栏 -->
+    <header class="bg-gray-900 border-b border-gray-700 p-3 flex justify-between items-center mb-2 rounded-sm">
+        <div class="flex items-center gap-4">
+            <div class="w-8 h-8 bg-blue-600 rounded flex items-center justify-center font-bold text-lg">Z</div>
+            <div>
+                <h1 class="text-xl font-bold tracking-wider text-gray-200">Z-TEK SCADA SYS</h1>
+                <p class="text-xs text-gray-500">UNIT: HEATING-CHAMBER-A1</p>
+            </div>
+        </div>
+        <div class="flex gap-6 text-sm font-mono text-gray-400">
+            <div>SYS_TIME: <span id="sys-time" class="text-gray-200">12:00:00</span></div>
+            <div>UPTIME: <span class="text-gray-200">0042h 15m</span></div>
+            <div class="flex items-center gap-2">
+                STATUS: 
+                <span id="sys-status-indicator" class="w-3 h-3 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.8)]"></span>
+                <span id="sys-status-text" class="text-green-500 font-bold">NORMAL</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主界面网格 -->
+    <main class="flex-1 grid grid-cols-12 gap-2">
+        
+        <!-- 左侧：主要读数 (OCR识别核心区) -->
+        <section class="col-span-8 flex flex-col gap-2">
+            <!-- 核心数据面板 -->
+            <div class="panel flex-1 flex flex-col relative" id="main-display-panel">
+                <div class="panel-header">
+                    <span>Core Temperature (PV)</span>
+                    <span class="text-xs border border-gray-600 px-1 text-gray-500">SENSOR_01</span>
+                </div>
+                <div class="flex-1 flex flex-col items-center justify-center p-6 bg-black">
+                    <!-- 这里是你的OCR主要目标 -->
+                    <div class="lcd-panel w-full h-full flex items-center justify-center relative overflow-hidden">
+                        <div class="flex items-baseline gap-4">
+                            <!-- ID用于JS更新，class用于样式 -->
+                            <span id="temp-display" class="lcd-text text-[12rem] leading-none font-bold">024</span>
+                            <span class="lcd-text text-4xl text-gray-500">°C</span>
+                        </div>
+                        
+                        <!-- 装饰性UI元素 -->
+                        <div class="absolute top-4 right-4 text-xs font-mono text-gray-600">
+                            HI_LMT: 080<br>LO_LMT: 010
+                        </div>
+                    </div>
+                </div>
+                <!-- 进度条 -->
+                <div class="h-4 bg-gray-800 w-full border-t border-gray-700 relative">
+                    <div id="temp-bar" class="h-full bg-gradient-to-r from-green-600 via-yellow-500 to-red-600 w-[24%] transition-all duration-300"></div>
+                    <!-- 阈值标记 -->
+                    <div class="absolute top-0 bottom-0 left-[80%] border-l-2 border-red-500 z-10 opacity-50"></div>
+                </div>
+            </div>
+
+            <!-- 实时曲线图 -->
+            <div class="panel h-64 flex flex-col">
+                <div class="panel-header">
+                    <span>Historical Trend (10s)</span>
+                    <div class="flex gap-2 text-xs">
+                        <span class="text-green-500">■ PV</span>
+                        <span class="text-blue-500">■ SV</span>
+                    </div>
+                </div>
+                <div class="flex-1 bg-gray-900 relative p-2">
+                    <canvas id="trendChart" class="w-full h-full block"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- 右侧：控制与参数 -->
+        <section class="col-span-4 flex flex-col gap-2">
+            
+            <!-- 控制面板 (鼠标点击目标区) -->
+            <div class="panel flex-none p-4 bg-gray-800">
+                <div class="mb-4 border-b border-gray-600 pb-2 text-sm font-bold text-gray-400 tracking-wider">
+                    MANUAL OVERRIDE
+                </div>
+                
+                <div class="grid grid-cols-1 gap-4">
+                    <!-- 冷却按钮：这是主要的点击目标 -->
+                    <button id="btn-cool" class="industrial-btn h-24 rounded flex flex-col items-center justify-center gap-2 group transition-all" onclick="toggleCooling()">
+                        <div class="w-8 h-8 rounded-full border-2 border-gray-500 group-hover:border-blue-400 flex items-center justify-center relative bg-gray-700">
+                             <div id="cool-led" class="w-4 h-4 rounded-full bg-gray-900 transition-colors"></div>
+                        </div>
+                        <span class="text-xl font-bold tracking-widest text-gray-300 group-hover:text-white">EMERGENCY COOLING</span>
+                        <span class="text-xs text-gray-500 font-mono">ACTUATOR_PUMP_B</span>
+                    </button>
+
+                    <div class="grid grid-cols-2 gap-4">
+                         <button class="industrial-btn h-16 rounded opacity-50 cursor-not-allowed">
+                            <span class="text-sm font-bold text-gray-400">RESET</span>
+                        </button>
+                        <button class="industrial-btn h-16 rounded opacity-50 cursor-not-allowed">
+                            <span class="text-sm font-bold text-gray-400">CALIBRATE</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 参数设置 -->
+            <div class="panel flex-1 p-4">
+                <div class="panel-header -mx-4 -mt-4 mb-4">
+                    <span>Process Parameters</span>
+                </div>
+                <div class="space-y-6 font-mono text-sm">
+                    <div>
+                        <div class="flex justify-between mb-1 text-gray-400">
+                            <span>HEATING RATE</span>
+                            <span id="heat-rate-val">1.5</span>
+                        </div>
+                        <input type="range" min="0.5" max="5.0" step="0.1" value="1.5" class="w-full accent-green-500 bg-gray-700 h-2 rounded-lg appearance-none cursor-pointer" oninput="updateRate(this.value)">
+                    </div>
+                    
+                    <div class="p-3 bg-black border border-gray-700 rounded">
+                        <div class="text-gray-500 text-xs mb-2">SYSTEM LOGS</div>
+                        <div id="log-console" class="h-40 overflow-hidden text-xs text-green-700 font-mono leading-tight">
+                            > SYS_INIT... OK<br>
+                            > CONNECTION ESTABLISHED<br>
+                            > SENSOR_01 ONLINE<br>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        // --- 核心模拟逻辑 ---
+
+        // 状态变量
+        const state = {
+            temperature: 24.0,
+            isCooling: false,
+            heatingRate: 1.5, // 基础升温速率
+            coolingRate: 4.0, // 冷却速率
+            maxTemp: 120,
+            threshold: 80, // 报警阈值
+            history: new Array(100).fill(24.0) // 图表历史数据
+        };
+
+        // DOM 元素引用
+        const els = {
+            tempDisplay: document.getElementById('temp-display'),
+            tempBar: document.getElementById('temp-bar'),
+            mainPanel: document.getElementById('main-display-panel'),
+            statusText: document.getElementById('sys-status-text'),
+            statusIndicator: document.getElementById('sys-status-indicator'),
+            coolBtn: document.getElementById('btn-cool'),
+            coolLed: document.getElementById('cool-led'),
+            sysTime: document.getElementById('sys-time'),
+            logConsole: document.getElementById('log-console'),
+            chart: document.getElementById('trendChart')
+        };
+
+        // 1. 物理模拟循环 (每100ms运行一次)
+        setInterval(() => {
+            // 温度变化逻辑
+            let change = 0;
+            const noise = (Math.random() - 0.5) * 0.5; // 随机波动
+
+            if (state.isCooling) {
+                // 冷却模式：快速下降，直到回到安全区
+                change = -state.coolingRate + noise;
+                if (state.temperature < 30) {
+                    toggleCooling(); // 自动关闭冷却
+                    addLog("AUTO: Temperature normalized. Cooling disabled.");
+                }
+            } else {
+                // 加热模式：自然上升
+                change = (state.heatingRate * 0.1) + noise;
+            }
+
+            state.temperature += change;
+            
+            // 边界限制
+            if (state.temperature < 20) state.temperature = 20;
+            if (state.temperature > state.maxTemp) state.temperature = state.maxTemp;
+
+            // 更新数据历史
+            state.history.push(state.temperature);
+            state.history.shift();
+
+            // 渲染界面
+            updateUI();
+        }, 100);
+
+        // 2. 界面更新逻辑
+        function updateUI() {
+            const intTemp = Math.floor(state.temperature);
+            
+            // 更新数字显示 (补零)
+            els.tempDisplay.innerText = intTemp.toString().padStart(3, '0');
+            
+            // 更新进度条
+            const pct = (state.temperature / state.maxTemp) * 100;
+            els.tempBar.style.width = `${pct}%`;
+
+            // 报警逻辑
+            if (state.temperature > state.threshold) {
+                // 触发报警样式
+                if (!els.mainPanel.classList.contains('alarm-state')) {
+                    els.mainPanel.classList.add('alarm-state');
+                    els.mainPanel.querySelector('.lcd-panel').classList.add('alarm-bg');
+                    els.statusText.innerText = "CRITICAL ALERT";
+                    els.statusText.className = "font-bold text-red-500 blink";
+                    els.statusIndicator.className = "w-3 h-3 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,1)] animate-pulse";
+                    addLog("ALERT: THRESHOLD EXCEEDED!");
+                }
+            } else {
+                // 恢复正常
+                if (els.mainPanel.classList.contains('alarm-state')) {
+                    els.mainPanel.classList.remove('alarm-state');
+                    els.mainPanel.querySelector('.lcd-panel').classList.remove('alarm-bg');
+                    els.statusText.innerText = "NORMAL OPERATION";
+                    els.statusText.className = "font-bold text-green-500";
+                    els.statusIndicator.className = "w-3 h-3 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.8)]";
+                }
+            }
+
+            // 更新时间
+            const now = new Date();
+            els.sysTime.innerText = now.toLocaleTimeString('en-GB');
+
+            // 绘制图表
+            drawChart();
+        }
+
+        // 3. 交互逻辑
+        function toggleCooling() {
+            state.isCooling = !state.isCooling;
+            
+            if (state.isCooling) {
+                els.coolBtn.classList.add('active-cooling');
+                els.coolLed.classList.remove('bg-gray-900');
+                els.coolLed.classList.add('bg-blue-400', 'shadow-[0_0_5px_#60a5fa]');
+                addLog("CMD: COOLING SYSTEM ENGAGED");
+            } else {
+                els.coolBtn.classList.remove('active-cooling');
+                els.coolLed.classList.add('bg-gray-900');
+                els.coolLed.classList.remove('bg-blue-400', 'shadow-[0_0_5px_#60a5fa]');
+                addLog("CMD: COOLING SYSTEM STANDBY");
+            }
+        }
+
+        function updateRate(val) {
+            state.heatingRate = parseFloat(val);
+            document.getElementById('heat-rate-val').innerText = state.heatingRate.toFixed(1);
+        }
+
+        function addLog(msg) {
+            const time = new Date().toLocaleTimeString('en-GB');
+            const p = document.createElement('div');
+            p.innerHTML = `<span class="opacity-50">[${time}]</span> ${msg}`;
+            els.logConsole.prepend(p);
+            if (els.logConsole.children.length > 8) {
+                els.logConsole.lastElementChild.remove();
+            }
+        }
+
+        // 4. Canvas图表绘制 (轻量级，无需外部库)
+        function drawChart() {
+            const ctx = els.chart.getContext('2d');
+            const w = els.chart.width = els.chart.offsetWidth;
+            const h = els.chart.height = els.chart.offsetHeight;
+
+            // 清空
+            ctx.clearRect(0, 0, w, h);
+
+            // 画网格
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            for(let i=0; i<w; i+=40) { ctx.moveTo(i,0); ctx.lineTo(i,h); }
+            for(let i=0; i<h; i+=40) { ctx.moveTo(0,i); ctx.lineTo(w,i); }
+            ctx.stroke();
+
+            // 画阈值线
+            const dangerY = h - (state.threshold / state.maxTemp * h);
+            ctx.strokeStyle = 'rgba(255, 0, 0, 0.5)';
+            ctx.setLineDash([5, 5]);
+            ctx.beginPath();
+            ctx.moveTo(0, dangerY);
+            ctx.lineTo(w, dangerY);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // 画折线
+            ctx.strokeStyle = state.temperature > state.threshold ? '#ff3333' : '#00ff41';
+            ctx.lineWidth = 2;
+            ctx.shadowColor = state.temperature > state.threshold ? '#ff3333' : '#00ff41';
+            ctx.shadowBlur = 10;
+            
+            ctx.beginPath();
+            const step = w / (state.history.length - 1);
+            
+            state.history.forEach((val, index) => {
+                const y = h - (val / state.maxTemp * h);
+                const x = index * step;
+                if (index === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            });
+            ctx.stroke();
+            
+            // 可以在右侧画一个当前点
+            ctx.fillStyle = '#fff';
+            ctx.beginPath();
+            ctx.arc(w-2, h - (state.temperature / state.maxTemp * h), 2, 0, Math.PI*2);
+            ctx.fill();
+        }
+
+        // 初始化日志
+        addLog("SYSTEM BOOT SEQUENCE INITIATED");
+        setTimeout(() => addLog("DRIVERS LOADED..."), 500);
+        setTimeout(() => addLog("READY FOR OPERATION"), 1000);
+
+    </script>
+</body>
+</html>
