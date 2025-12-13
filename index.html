@@ -7,7 +7,6 @@
     <!-- 引入 Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* --- 工业字体与核心样式 --- */
         @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
         @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap');
 
@@ -43,7 +42,6 @@
             display: inline-block;
         }
 
-        /* 统一面板样式 */
         .panel {
             background-color: var(--color-panel);
             border: 1px solid var(--color-border);
@@ -584,9 +582,7 @@
             const time = new Date().toLocaleTimeString('en-GB');
             const div = document.createElement('div');
             div.innerText = `[${time}] ${msg}`;
-            // 修改：使用 prepend 配合标准流布局，新消息直接出现在最上方
             dom.log.prepend(div);
-            // 限制条数
             if (dom.log.children.length > 30) dom.log.lastElementChild.remove();
         }
 
