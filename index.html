@@ -3,423 +3,596 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Z-TEK 工业监控系统 V3.0</title>
-    <!-- 引入 Tailwind CSS 进行快速布局 -->
+    <title>Z-TEK 综合工业监控系统 V4.3 (最终完美版)</title>
+    <!-- 引入 Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* 工业风格自定义字体与特效 */
+        /* --- 工业字体与核心样式 --- */
         @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
-        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap');
+
+        :root {
+            --color-bg: #0f1115;
+            --color-panel: #181b21;
+            --color-border: #2a2e37;
+            --color-text-main: #e0e0e0;
+            --color-text-dim: #6b7280;
+            --accent-temp: #10b981; /* Green */
+            --accent-press: #f59e0b; /* Amber */
+            --accent-level: #3b82f6; /* Blue */
+            --danger: #ef4444;
+        }
 
         body {
-            background-color: #121212;
-            color: #e0e0e0;
+            background-color: var(--color-bg);
+            color: var(--color-text-main);
             font-family: 'Roboto', sans-serif;
-            overflow: hidden; /* 防止滚动 */
+            overflow: hidden; /* 禁止滚动 */
+            user-select: none;
         }
 
-        /* 模拟LCD液晶显示屏效果 */
-        .lcd-text {
+        /* LED 数字显示风格 */
+        .digital-readout {
             font-family: 'Share Tech Mono', monospace;
-            color: #00ff41;
-            text-shadow: 0 0 5px rgba(0, 255, 65, 0.5);
-            letter-spacing: 2px;
-        }
-
-        .lcd-panel {
+            letter-spacing: 0.05em;
+            text-shadow: 0 0 10px rgba(0,0,0,0.5);
             background: #000;
-            border: 2px solid #333;
-            box-shadow: inset 0 0 10px rgba(0,0,0,0.8);
-            position: relative;
-        }
-        
-        /* 扫描线效果 (增加真实感和识别难度) */
-        .lcd-panel::after {
-            content: " ";
-            display: block;
-            position: absolute;
-            top: 0;
-            left: 0;
-            bottom: 0;
-            right: 0;
-            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
-            z-index: 2;
-            background-size: 100% 2px, 3px 100%;
-            pointer-events: none;
-        }
-
-        /* 报警状态颜色 */
-        .alarm-state .lcd-text {
-            color: #ff3333;
-            text-shadow: 0 0 10px rgba(255, 51, 51, 0.8);
-            animation: blink 0.5s infinite alternate;
-        }
-        
-        .alarm-bg {
-            background-color: #3f0e0e !important;
-            border-color: #ff3333 !important;
-        }
-
-        @keyframes blink {
-            from { opacity: 1; }
-            to { opacity: 0.6; }
-        }
-
-        /* 工业按钮样式 */
-        .industrial-btn {
-            background: linear-gradient(to bottom, #4a4a4a, #2b2b2b);
-            border: 1px solid #1a1a1a;
-            box-shadow: inset 0 1px 0 rgba(255,255,255,0.1), 0 2px 4px rgba(0,0,0,0.5);
-            transition: all 0.1s;
-        }
-        .industrial-btn:active {
-            background: #222;
-            box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);
-            transform: translateY(2px);
-        }
-        .industrial-btn.active-cooling {
-            background: linear-gradient(to bottom, #0055aa, #003366);
-            border: 1px solid #0077cc;
-            color: white;
-            box-shadow: 0 0 10px #0077cc;
-        }
-
-        /* 面板容器风格 */
-        .panel {
-            background-color: #1e1e1e;
             border: 1px solid #333;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            padding: 0.1em 0.3em;
+            border-radius: 4px;
+            display: inline-block;
         }
+
+        /* 统一面板样式 */
+        .panel {
+            background-color: var(--color-panel);
+            border: 1px solid var(--color-border);
+            border-radius: 4px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.4);
+            display: flex;
+            flex-direction: column;
+        }
+
         .panel-header {
-            background-color: #252525;
-            border-bottom: 1px solid #333;
+            background: linear-gradient(to right, #1f2329, #181b21);
+            border-bottom: 1px solid var(--color-border);
             padding: 8px 12px;
-            font-size: 0.85rem;
+            font-size: 0.75rem;
+            font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 1px;
-            color: #888;
+            color: var(--color-text-dim);
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
+        
+        .panel-header::before {
+            content: '';
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background-color: currentColor;
+            border-radius: 50%;
+            margin-right: 8px;
+            box-shadow: 0 0 5px currentColor;
+        }
+        
+        /* 状态指示灯颜色 */
+        .status-normal .panel-header { color: var(--accent-temp); }
+        .status-warn .panel-header { color: var(--accent-press); }
+        .status-alert .panel-header { color: var(--danger); }
+
+        /* 垂直液罐 */
+        .tank-container {
+            background: #0a0a0a;
+            border: 2px solid #333;
+            position: relative;
+            overflow: hidden;
+            border-radius: 4px;
+            box-shadow: inset 0 0 20px #000;
+        }
+        
+        .tank-fluid {
+            background: linear-gradient(to top, var(--accent-level) 0%, #60a5fa 100%);
+            opacity: 0.8;
+            transition: height 0.2s linear;
+            box-shadow: 0 0 20px var(--accent-level);
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+        }
+
+        /* 实体物理按钮模拟 */
+        .control-btn {
+            border: none;
+            border-radius: 6px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 4px 0 rgba(0,0,0,0.5), 0 5px 10px rgba(0,0,0,0.3);
+            transition: all 0.1s;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        .control-btn:active:not(:disabled) {
+            transform: translateY(4px);
+            box-shadow: 0 0 0 rgba(0,0,0,0.5), inset 0 2px 5px rgba(0,0,0,0.3);
+        }
+        
+        .control-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            filter: grayscale(100%);
+        }
+
+        .btn-start { background: linear-gradient(#15803d, #14532d); color: #86efac; border: 1px solid #166534; }
+        .btn-stop { background: linear-gradient(#b91c1c, #7f1d1d); color: #fca5a5; border: 1px solid #991b1b; }
+        .btn-cool { background: linear-gradient(#0369a1, #075985); color: #bae6fd; border: 1px solid #0284c7; }
+        .btn-cool.active { background: linear-gradient(#0ea5e9, #0284c7); box-shadow: 0 0 15px #0ea5e9; border-color: #38bdf8; color: white; }
+        .btn-reset { background: linear-gradient(#ca8a04, #854d0e); color: #fde047; border: 1px solid #a16207; }
+
+        /* 指示灯 */
+        .led-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: #333;
+            border: 1px solid #444;
+            transition: all 0.3s;
+        }
+        .led-on {
+            background-color: #00ff00;
+            box-shadow: 0 0 8px #00ff00;
+            border-color: #00ff00;
+        }
+        
+        /* Grid 刻度线 */
+        .grid-lines {
+            background-image: 
+                linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
     </style>
 </head>
-<body class="h-screen flex flex-col p-2 select-none">
+<body class="h-screen flex flex-col p-3">
 
-    <!-- 顶部状态栏 -->
-    <header class="bg-gray-900 border-b border-gray-700 p-3 flex justify-between items-center mb-2 rounded-sm">
-        <div class="flex items-center gap-4">
-            <div class="w-8 h-8 bg-blue-600 rounded flex items-center justify-center font-bold text-lg">Z</div>
+    <!-- Header -->
+    <header class="flex-none bg-gray-900 border-b border-gray-800 pb-3 mb-3 flex justify-between items-end">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-800 rounded flex items-center justify-center text-xl font-black shadow-lg">Z</div>
             <div>
-                <h1 class="text-xl font-bold tracking-wider text-gray-200">Z-TEK SCADA SYS</h1>
-                <p class="text-xs text-gray-500">UNIT: HEATING-CHAMBER-A1</p>
+                <h1 class="text-xl font-bold tracking-widest text-gray-200">Z-TEK <span class="text-blue-500">INDUSTRIAL</span></h1>
+                <div class="text-xs text-gray-500 font-mono tracking-wider">UNIT: MULTI-VAR-SIMULATOR-04</div>
             </div>
         </div>
-        <div class="flex gap-6 text-sm font-mono text-gray-400">
-            <div>SYS_TIME: <span id="sys-time" class="text-gray-200">12:00:00</span></div>
-            <div>UPTIME: <span class="text-gray-200">0042h 15m</span></div>
-            <div class="flex items-center gap-2">
-                STATUS: 
-                <span id="sys-status-indicator" class="w-3 h-3 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.8)]"></span>
-                <span id="sys-status-text" class="text-green-500 font-bold">NORMAL</span>
+        <div class="flex items-center gap-6 font-mono text-sm">
+            <div class="flex flex-col items-end">
+                <span class="text-xs text-gray-600">SYSTEM STATE</span>
+                <span id="sys-state-text" class="text-red-500 font-bold">STOPPED</span>
+            </div>
+            <div class="text-right">
+                <div class="text-xs text-gray-600">LOCAL TIME</div>
+                <div id="clock" class="text-gray-300">00:00:00</div>
             </div>
         </div>
     </header>
 
-    <!-- 主界面网格 -->
-    <main class="flex-1 grid grid-cols-12 gap-2">
+    <!-- Main Content Grid -->
+    <main class="flex-1 grid grid-cols-12 gap-3 min-h-0">
         
-        <!-- 左侧：主要读数 (OCR识别核心区) -->
-        <section class="col-span-8 flex flex-col gap-2">
-            <!-- 核心数据面板 -->
-            <div class="panel flex-1 flex flex-col relative" id="main-display-panel">
-                <div class="panel-header">
-                    <span>Core Temperature (PV)</span>
-                    <span class="text-xs border border-gray-600 px-1 text-gray-500">SENSOR_01</span>
-                </div>
-                <div class="flex-1 flex flex-col items-center justify-center p-6 bg-black">
-                    <!-- 这里是你的OCR主要目标 -->
-                    <div class="lcd-panel w-full h-full flex items-center justify-center relative overflow-hidden">
-                        <div class="flex items-baseline gap-4">
-                            <!-- ID用于JS更新，class用于样式 -->
-                            <span id="temp-display" class="lcd-text text-[12rem] leading-none font-bold">024</span>
-                            <span class="lcd-text text-4xl text-gray-500">°C</span>
-                        </div>
-                        
-                        <!-- 装饰性UI元素 -->
-                        <div class="absolute top-4 right-4 text-xs font-mono text-gray-600">
-                            HI_LMT: 080<br>LO_LMT: 010
-                        </div>
-                    </div>
-                </div>
-                <!-- 进度条 -->
-                <div class="h-4 bg-gray-800 w-full border-t border-gray-700 relative">
-                    <div id="temp-bar" class="h-full bg-gradient-to-r from-green-600 via-yellow-500 to-red-600 w-[24%] transition-all duration-300"></div>
-                    <!-- 阈值标记 -->
-                    <div class="absolute top-0 bottom-0 left-[80%] border-l-2 border-red-500 z-10 opacity-50"></div>
-                </div>
-            </div>
-
-            <!-- 实时曲线图 -->
-            <div class="panel h-64 flex flex-col">
-                <div class="panel-header">
-                    <span>Historical Trend (10s)</span>
-                    <div class="flex gap-2 text-xs">
-                        <span class="text-green-500">■ PV</span>
-                        <span class="text-blue-500">■ SV</span>
-                    </div>
-                </div>
-                <div class="flex-1 bg-gray-900 relative p-2">
-                    <canvas id="trendChart" class="w-full h-full block"></canvas>
-                </div>
-            </div>
-        </section>
-
-        <!-- 右侧：控制与参数 -->
-        <section class="col-span-4 flex flex-col gap-2">
+        <!-- 左侧 Dashboard (数据区) col-span-9 -->
+        <section class="col-span-9 grid grid-rows-2 gap-3 min-h-0">
             
-            <!-- 控制面板 (鼠标点击目标区) -->
-            <div class="panel flex-none p-4 bg-gray-800">
-                <div class="mb-4 border-b border-gray-600 pb-2 text-sm font-bold text-gray-400 tracking-wider">
-                    MANUAL OVERRIDE
+            <!-- 上半部分：主温度监控 -->
+            <div class="panel row-span-1 p-0 relative overflow-hidden status-normal" id="panel-temp">
+                <div class="panel-header">
+                    <span>Main Furnace Temp (PV)</span>
+                    <span class="text-xs font-mono opacity-50">T-101</span>
                 </div>
-                
-                <div class="grid grid-cols-1 gap-4">
-                    <!-- 冷却按钮：这是主要的点击目标 -->
-                    <button id="btn-cool" class="industrial-btn h-24 rounded flex flex-col items-center justify-center gap-2 group transition-all" onclick="toggleCooling()">
-                        <div class="w-8 h-8 rounded-full border-2 border-gray-500 group-hover:border-blue-400 flex items-center justify-center relative bg-gray-700">
-                             <div id="cool-led" class="w-4 h-4 rounded-full bg-gray-900 transition-colors"></div>
+                <div class="flex-1 flex relative">
+                    <!-- 左侧：大数字 -->
+                    <div class="w-1/3 border-r border-gray-800 flex flex-col items-center justify-center p-4 bg-black">
+                        <span class="text-xs text-gray-500 mb-2 font-mono w-full text-left">CURRENT VALUE (°C)</span>
+                        <div class="flex items-baseline gap-2">
+                            <!-- 核心识别目标 1 -->
+                            <span id="val-temp" class="digital-readout text-8xl text-green-500 font-bold">000</span>
                         </div>
-                        <span class="text-xl font-bold tracking-widest text-gray-300 group-hover:text-white">EMERGENCY COOLING</span>
-                        <span class="text-xs text-gray-500 font-mono">ACTUATOR_PUMP_B</span>
-                    </button>
-
-                    <div class="grid grid-cols-2 gap-4">
-                         <button class="industrial-btn h-16 rounded opacity-50 cursor-not-allowed">
-                            <span class="text-sm font-bold text-gray-400">RESET</span>
-                        </button>
-                        <button class="industrial-btn h-16 rounded opacity-50 cursor-not-allowed">
-                            <span class="text-sm font-bold text-gray-400">CALIBRATE</span>
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 参数设置 -->
-            <div class="panel flex-1 p-4">
-                <div class="panel-header -mx-4 -mt-4 mb-4">
-                    <span>Process Parameters</span>
-                </div>
-                <div class="space-y-6 font-mono text-sm">
-                    <div>
-                        <div class="flex justify-between mb-1 text-gray-400">
-                            <span>HEATING RATE</span>
-                            <span id="heat-rate-val">1.5</span>
+                        <div class="w-full mt-6">
+                            <div class="flex justify-between text-xs text-gray-500 font-mono mb-1">
+                                <span>0</span>
+                                <span>MAX: 150</span>
+                            </div>
+                            <!-- 温度进度条 -->
+                            <div class="h-3 bg-gray-800 rounded-full overflow-hidden border border-gray-700">
+                                <div id="bar-temp" class="h-full bg-green-600 w-0 transition-all duration-300"></div>
+                            </div>
                         </div>
-                        <input type="range" min="0.5" max="5.0" step="0.1" value="1.5" class="w-full accent-green-500 bg-gray-700 h-2 rounded-lg appearance-none cursor-pointer" oninput="updateRate(this.value)">
                     </div>
                     
-                    <div class="p-3 bg-black border border-gray-700 rounded">
-                        <div class="text-gray-500 text-xs mb-2">SYSTEM LOGS</div>
-                        <div id="log-console" class="h-40 overflow-hidden text-xs text-green-700 font-mono leading-tight">
-                            > SYS_INIT... OK<br>
-                            > CONNECTION ESTABLISHED<br>
-                            > SENSOR_01 ONLINE<br>
+                    <!-- 右侧：曲线图 -->
+                    <div class="flex-1 bg-gray-900 relative grid-lines">
+                        <canvas id="chart-temp" class="w-full h-full block"></canvas>
+                        <div class="absolute top-2 right-2 text-xs font-mono text-green-500 bg-black/50 px-2 rounded border border-green-900">
+                            LIVE TREND (10s)
                         </div>
                     </div>
                 </div>
             </div>
+
+            <!-- 下半部分：压力与液位 -->
+            <div class="row-span-1 grid grid-cols-2 gap-3">
+                
+                <!-- 压力监控 -->
+                <div class="panel status-warn" id="panel-press">
+                    <div class="panel-header">
+                        <span>Chamber Pressure</span>
+                        <span class="text-xs font-mono opacity-50">P-202</span>
+                    </div>
+                    <div class="flex-1 bg-black flex flex-col items-center justify-center p-4 relative">
+                        <div class="relative w-48 h-24 mb-4 overflow-hidden">
+                            <div class="absolute w-40 h-40 border-[15px] border-gray-800 rounded-full top-0 left-4 box-border"></div>
+                            <div id="gauge-press-arc" class="absolute w-40 h-40 border-[15px] border-amber-500 rounded-full top-0 left-4 box-border origin-center" style="transform: rotate(-180deg); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);"></div>
+                        </div>
+                        
+                        <div class="text-center z-10 -mt-10">
+                            <!-- 核心识别目标 2 -->
+                            <span id="val-press" class="digital-readout text-5xl text-amber-500">00.0</span>
+                            <div class="text-gray-500 text-sm font-mono mt-1">MPa</div>
+                        </div>
+
+                        <div class="w-full flex justify-between px-8 text-xs text-gray-600 font-mono mt-4">
+                            <span>0.0</span>
+                            <span>CRITICAL: 5.0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 液位监控 -->
+                <div class="panel status-normal" id="panel-level">
+                    <div class="panel-header">
+                        <span>Coolant Level</span>
+                        <span class="text-xs font-mono opacity-50">L-303</span>
+                    </div>
+                    <div class="flex-1 bg-gray-900 flex p-4 gap-6 items-center">
+                        <div class="h-full w-24 tank-container relative">
+                            <div class="absolute right-0 top-0 bottom-0 w-full z-10 flex flex-col justify-between py-2 text-[10px] text-gray-500 font-mono text-right pr-1 pointer-events-none">
+                                <div class="border-b border-gray-600 w-full">100%</div>
+                                <div class="border-b border-gray-600 w-1/2 ml-auto">75%</div>
+                                <div class="border-b border-gray-600 w-full">50%</div>
+                                <div class="border-b border-gray-600 w-1/2 ml-auto">25%</div>
+                                <div class="border-b border-gray-600 w-full">0%</div>
+                            </div>
+                            <div id="tank-fill" class="tank-fluid h-[0%]"></div>
+                        </div>
+
+                        <div class="flex-1 flex flex-col justify-center">
+                            <span class="text-xs text-gray-500 font-mono mb-1">VOLUME (%)</span>
+                            <!-- 核心识别目标 3 -->
+                            <span id="val-level" class="digital-readout text-6xl text-blue-500 w-min">00</span>
+                            <div class="mt-4 space-y-2">
+                                <div class="flex justify-between text-xs font-mono text-gray-400 border-b border-gray-700 pb-1">
+                                    <span>PUMP A</span>
+                                    <span id="status-pump" class="text-gray-600">OFF</span>
+                                </div>
+                                <div class="flex justify-between text-xs font-mono text-gray-400 border-b border-gray-700 pb-1">
+                                    <span>VALVE B</span>
+                                    <span id="status-valve" class="text-gray-600">CLOSED</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
         </section>
+
+        <!-- 右侧 Control Panel (操作区) col-span-3 -->
+        <aside class="col-span-3 flex flex-col gap-3 h-full overflow-hidden">
+            
+            <!-- 手动操作区 -->
+            <div class="panel p-4 flex-none bg-[#1a1c23]">
+                <div class="mb-4 text-xs font-bold text-gray-500 tracking-widest border-b border-gray-700 pb-2">
+                    MANUAL OPERATION
+                </div>
+                
+                <div class="flex flex-col gap-4">
+                    <button id="btn-start" onclick="sysStart()" class="control-btn btn-start h-14 text-lg">
+                        <div class="led-indicator" id="led-start"></div>
+                        START SYSTEM
+                    </button>
+                    
+                    <button id="btn-stop" onclick="sysStop()" class="control-btn btn-stop h-14 text-lg" disabled>
+                        <div class="led-indicator" id="led-stop"></div>
+                        STOP SYSTEM
+                    </button>
+
+                    <!-- 紧急冷却按钮 -->
+                    <button id="btn-cool" onmousedown="startCooling()" onmouseup="stopCooling()" onmouseleave="stopCooling()" class="control-btn btn-cool h-16 text-lg mt-2">
+                        ⚠ EMERGENCY COOL
+                    </button>
+                    
+                    <button id="btn-reset" onclick="sysReset()" class="control-btn btn-reset h-10 text-sm mt-2">
+                        RESET ALARMS
+                    </button>
+                </div>
+            </div>
+
+            <!-- 参数调节区 -->
+            <div class="panel flex-1 p-4 min-h-0 flex flex-col">
+                <div class="panel-header -mx-4 -mt-4 mb-4 flex-none">
+                    <span>Simulation Params</span>
+                </div>
+                
+                <div class="space-y-6 font-mono text-xs flex-none">
+                    <div>
+                        <div class="flex justify-between text-gray-400 mb-2">
+                            <span>TARGET TEMP</span>
+                            <span id="label-target-temp" class="text-green-400">80°C</span>
+                        </div>
+                        <input type="range" id="input-target-temp" min="50" max="120" value="80" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-green-500">
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between text-gray-400 mb-2">
+                            <span>PRESSURE LOAD</span>
+                            <span id="label-press-load" class="text-amber-400">1.0x</span>
+                        </div>
+                        <input type="range" id="input-press-load" min="0.5" max="2.0" step="0.1" value="1.0" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-amber-500">
+                    </div>
+                </div>
+
+                <!-- 系统日志 (修改：移除 flex-col-reverse，使用标准流) -->
+                <div class="flex-1 flex flex-col mt-4 min-h-0">
+                    <div class="text-gray-500 mb-1 flex-none">EVENT LOG</div>
+                    <div id="sys-log" class="flex-1 bg-black border border-gray-700 rounded p-2 text-green-700 font-mono text-[10px] overflow-y-auto">
+                        <!-- Logs go here (Top to Bottom) -->
+                    </div>
+                </div>
+            </div>
+
+        </aside>
+
     </main>
 
     <script>
-        // --- 核心模拟逻辑 ---
-
-        // 状态变量
-        const state = {
-            temperature: 24.0,
-            isCooling: false,
-            heatingRate: 1.5, // 基础升温速率
-            coolingRate: 4.0, // 冷却速率
-            maxTemp: 120,
-            threshold: 80, // 报警阈值
-            history: new Array(100).fill(24.0) // 图表历史数据
+        // --- 系统状态 ---
+        const sys = {
+            running: false,
+            manualCooling: false,
+            temp: 20.0,
+            targetTemp: 80.0,
+            pressure: 0.0,
+            pressLoad: 1.0,
+            level: 50.0,
+            pumpActive: false,
+            historyTemp: new Array(100).fill(20.0)
         };
 
-        // DOM 元素引用
-        const els = {
-            tempDisplay: document.getElementById('temp-display'),
-            tempBar: document.getElementById('temp-bar'),
-            mainPanel: document.getElementById('main-display-panel'),
-            statusText: document.getElementById('sys-status-text'),
-            statusIndicator: document.getElementById('sys-status-indicator'),
-            coolBtn: document.getElementById('btn-cool'),
-            coolLed: document.getElementById('cool-led'),
-            sysTime: document.getElementById('sys-time'),
-            logConsole: document.getElementById('log-console'),
-            chart: document.getElementById('trendChart')
+        // --- DOM 元素引用 (初始化时获取一次，避免undefined错误) ---
+        const dom = {
+            valTemp: document.getElementById('val-temp'),
+            barTemp: document.getElementById('bar-temp'),
+            valPress: document.getElementById('val-press'),
+            gaugePress: document.getElementById('gauge-press-arc'),
+            valLevel: document.getElementById('val-level'),
+            tankFill: document.getElementById('tank-fill'),
+            statusPump: document.getElementById('status-pump'),
+            statusValve: document.getElementById('status-valve'),
+            btnStart: document.getElementById('btn-start'),
+            btnStop: document.getElementById('btn-stop'),
+            btnCool: document.getElementById('btn-cool'),
+            btnReset: document.getElementById('btn-reset'),
+            ledStart: document.getElementById('led-start'),
+            ledStop: document.getElementById('led-stop'),
+            stateText: document.getElementById('sys-state-text'),
+            log: document.getElementById('sys-log'),
+            chartTemp: document.getElementById('chart-temp'),
+            // 输入控件
+            inputTarget: document.getElementById('input-target-temp'),
+            inputPress: document.getElementById('input-press-load'),
+            // 文本标签
+            labelTarget: document.getElementById('label-target-temp'),
+            labelPress: document.getElementById('label-press-load')
         };
 
-        // 1. 物理模拟循环 (每100ms运行一次)
+        // --- 核心模拟循环 (100ms) ---
         setInterval(() => {
-            // 温度变化逻辑
-            let change = 0;
-            const noise = (Math.random() - 0.5) * 0.5; // 随机波动
-
-            if (state.isCooling) {
-                // 冷却模式：快速下降，直到回到安全区
-                change = -state.coolingRate + noise;
-                if (state.temperature < 30) {
-                    toggleCooling(); // 自动关闭冷却
-                    addLog("AUTO: Temperature normalized. Cooling disabled.");
-                }
-            } else {
-                // 加热模式：自然上升
-                change = (state.heatingRate * 0.1) + noise;
-            }
-
-            state.temperature += change;
-            
-            // 边界限制
-            if (state.temperature < 20) state.temperature = 20;
-            if (state.temperature > state.maxTemp) state.temperature = state.maxTemp;
-
-            // 更新数据历史
-            state.history.push(state.temperature);
-            state.history.shift();
-
-            // 渲染界面
+            updatePhysics();
             updateUI();
+            updateChart();
+            updateClock();
         }, 100);
 
-        // 2. 界面更新逻辑
+        // --- 物理逻辑 ---
+        function updatePhysics() {
+            if (!dom.inputTarget || !dom.inputPress) return;
+
+            sys.targetTemp = parseInt(dom.inputTarget.value);
+            dom.labelTarget.innerText = sys.targetTemp + "°C";
+            
+            sys.pressLoad = parseFloat(dom.inputPress.value);
+            dom.labelPress.innerText = sys.pressLoad.toFixed(1) + "x";
+
+            const noise = (Math.random() - 0.5);
+
+            if (sys.running) {
+                // 1. 温度逻辑
+                let diff = sys.targetTemp - sys.temp;
+                let change = (diff * 0.02) + (noise * 0.5);
+                
+                // 紧急冷却
+                if (sys.manualCooling) {
+                    change = -5.0 + noise; // 强制快速降温
+                }
+
+                sys.temp += change;
+
+                // 2. 压力逻辑
+                let targetPress = (sys.temp * 0.04) * sys.pressLoad;
+                sys.pressure += (targetPress - sys.pressure) * 0.1 + (noise * 0.05);
+
+                // 3. 液位逻辑
+                if (sys.pumpActive) {
+                    sys.level += 0.8; 
+                    if (sys.level >= 90) {
+                        sys.pumpActive = false;
+                        addLog("AUTO: PUMP STOPPED (HIGH LEVEL)");
+                    }
+                } else {
+                    sys.level -= 0.2 * sys.pressLoad; 
+                    if (sys.manualCooling) sys.level -= 0.5;
+
+                    if (sys.level <= 20) {
+                        sys.pumpActive = true;
+                        addLog("AUTO: PUMP STARTED (LOW LEVEL)");
+                    }
+                }
+
+            } else {
+                // 停止状态
+                if (sys.temp > 20) sys.temp -= 0.5;
+                if (sys.pressure > 0) sys.pressure -= 0.1;
+                sys.pumpActive = false;
+            }
+
+            // 边界限制
+            if (sys.temp < 20) sys.temp = 20;
+            if (sys.pressure < 0) sys.pressure = 0;
+            if (sys.level < 0) sys.level = 0;
+            if (sys.level > 100) sys.level = 100;
+
+            sys.historyTemp.push(sys.temp);
+            sys.historyTemp.shift();
+        }
+
+        // --- UI 更新逻辑 ---
         function updateUI() {
-            const intTemp = Math.floor(state.temperature);
+            // Temp
+            dom.valTemp.innerText = Math.floor(sys.temp).toString().padStart(3, '0');
+            if (sys.temp > 100) dom.valTemp.className = "digital-readout text-8xl text-red-500 font-bold animate-pulse";
+            else dom.valTemp.className = "digital-readout text-8xl text-green-500 font-bold";
             
-            // 更新数字显示 (补零)
-            els.tempDisplay.innerText = intTemp.toString().padStart(3, '0');
+            dom.barTemp.style.width = Math.min((sys.temp / 150) * 100, 100) + "%";
+            if (sys.temp > 100) dom.barTemp.className = "h-full bg-red-600 w-0 transition-all duration-300";
+            else dom.barTemp.className = "h-full bg-green-600 w-0 transition-all duration-300";
+
+            // Pressure
+            dom.valPress.innerText = sys.pressure.toFixed(1).padStart(4, '0');
+            const gaugeRot = Math.min(sys.pressure * 36, 180) - 180;
+            dom.gaugePress.style.transform = `rotate(${gaugeRot}deg)`;
+
+            // Level
+            dom.valLevel.innerText = Math.floor(sys.level).toString().padStart(2, '0');
+            dom.tankFill.style.height = sys.level + "%";
             
-            // 更新进度条
-            const pct = (state.temperature / state.maxTemp) * 100;
-            els.tempBar.style.width = `${pct}%`;
+            dom.statusPump.innerText = sys.pumpActive ? "RUNNING" : "IDLE";
+            dom.statusPump.className = sys.pumpActive ? "text-green-500 font-bold" : "text-gray-600";
+            
+            dom.statusValve.innerText = sys.running ? "OPEN" : "CLOSED";
+            dom.statusValve.className = sys.running ? "text-blue-500 font-bold" : "text-gray-600";
+        }
 
-            // 报警逻辑
-            if (state.temperature > state.threshold) {
-                // 触发报警样式
-                if (!els.mainPanel.classList.contains('alarm-state')) {
-                    els.mainPanel.classList.add('alarm-state');
-                    els.mainPanel.querySelector('.lcd-panel').classList.add('alarm-bg');
-                    els.statusText.innerText = "CRITICAL ALERT";
-                    els.statusText.className = "font-bold text-red-500 blink";
-                    els.statusIndicator.className = "w-3 h-3 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,1)] animate-pulse";
-                    addLog("ALERT: THRESHOLD EXCEEDED!");
-                }
-            } else {
-                // 恢复正常
-                if (els.mainPanel.classList.contains('alarm-state')) {
-                    els.mainPanel.classList.remove('alarm-state');
-                    els.mainPanel.querySelector('.lcd-panel').classList.remove('alarm-bg');
-                    els.statusText.innerText = "NORMAL OPERATION";
-                    els.statusText.className = "font-bold text-green-500";
-                    els.statusIndicator.className = "w-3 h-3 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.8)]";
-                }
-            }
+        // --- 绘图逻辑 ---
+        function updateChart() {
+            const ctx = dom.chartTemp.getContext('2d');
+            const w = dom.chartTemp.width = dom.chartTemp.offsetWidth;
+            const h = dom.chartTemp.height = dom.chartTemp.offsetHeight;
 
-            // 更新时间
+            ctx.clearRect(0, 0, w, h);
+            ctx.beginPath();
+            ctx.strokeStyle = sys.temp > 100 ? '#ef4444' : '#10b981';
+            ctx.lineWidth = 3;
+            ctx.lineJoin = 'round';
+
+            const step = w / (sys.historyTemp.length - 1);
+            const maxVal = 150;
+
+            sys.historyTemp.forEach((val, i) => {
+                const x = i * step;
+                const y = h - ((val / maxVal) * h);
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            });
+            ctx.stroke();
+
+            ctx.lineTo(w, h);
+            ctx.lineTo(0, h);
+            ctx.fillStyle = sys.temp > 100 ? 'rgba(239, 68, 68, 0.2)' : 'rgba(16, 185, 129, 0.1)';
+            ctx.fill();
+        }
+
+        // --- 控制逻辑 ---
+        function sysStart() {
+            if (sys.running) return;
+            sys.running = true;
+            dom.stateText.innerText = "RUNNING";
+            dom.stateText.className = "text-green-500 font-bold blink";
+            dom.btnStart.disabled = true;
+            dom.btnStop.disabled = false;
+            dom.ledStart.classList.add('led-on');
+            dom.ledStop.classList.remove('led-on');
+            addLog("CMD: SYSTEM STARTED");
+        }
+
+        function sysStop() {
+            if (!sys.running) return;
+            sys.running = false;
+            dom.stateText.innerText = "STOPPED";
+            dom.stateText.className = "text-red-500 font-bold";
+            dom.btnStart.disabled = false;
+            dom.btnStop.disabled = true;
+            dom.ledStart.classList.remove('led-on');
+            dom.ledStop.classList.add('led-on');
+            addLog("CMD: SYSTEM STOPPED");
+        }
+
+        function startCooling() {
+            if (!sys.running) return;
+            sys.manualCooling = true;
+            dom.btnCool.classList.add('active');
+            addLog("WARN: EMERGENCY COOLING ACTIVE");
+        }
+        function stopCooling() {
+            sys.manualCooling = false;
+            dom.btnCool.classList.remove('active');
+        }
+
+        function sysReset() {
+            sys.temp = 20;
+            sys.pressure = 0;
+            sys.level = 50;
+            sys.historyTemp.fill(20);
+            dom.log.innerHTML = "";
+            addLog("CMD: SYSTEM RESET");
+        }
+
+        function updateClock() {
             const now = new Date();
-            els.sysTime.innerText = now.toLocaleTimeString('en-GB');
-
-            // 绘制图表
-            drawChart();
-        }
-
-        // 3. 交互逻辑
-        function toggleCooling() {
-            state.isCooling = !state.isCooling;
-            
-            if (state.isCooling) {
-                els.coolBtn.classList.add('active-cooling');
-                els.coolLed.classList.remove('bg-gray-900');
-                els.coolLed.classList.add('bg-blue-400', 'shadow-[0_0_5px_#60a5fa]');
-                addLog("CMD: COOLING SYSTEM ENGAGED");
-            } else {
-                els.coolBtn.classList.remove('active-cooling');
-                els.coolLed.classList.add('bg-gray-900');
-                els.coolLed.classList.remove('bg-blue-400', 'shadow-[0_0_5px_#60a5fa]');
-                addLog("CMD: COOLING SYSTEM STANDBY");
-            }
-        }
-
-        function updateRate(val) {
-            state.heatingRate = parseFloat(val);
-            document.getElementById('heat-rate-val').innerText = state.heatingRate.toFixed(1);
+            const clockEl = document.getElementById('clock');
+            if(clockEl) clockEl.innerText = now.toLocaleTimeString('en-GB');
         }
 
         function addLog(msg) {
             const time = new Date().toLocaleTimeString('en-GB');
-            const p = document.createElement('div');
-            p.innerHTML = `<span class="opacity-50">[${time}]</span> ${msg}`;
-            els.logConsole.prepend(p);
-            if (els.logConsole.children.length > 8) {
-                els.logConsole.lastElementChild.remove();
-            }
+            const div = document.createElement('div');
+            div.innerText = `[${time}] ${msg}`;
+            // 修改：使用 prepend 配合标准流布局，新消息直接出现在最上方
+            dom.log.prepend(div);
+            // 限制条数
+            if (dom.log.children.length > 30) dom.log.lastElementChild.remove();
         }
 
-        // 4. Canvas图表绘制 (轻量级，无需外部库)
-        function drawChart() {
-            const ctx = els.chart.getContext('2d');
-            const w = els.chart.width = els.chart.offsetWidth;
-            const h = els.chart.height = els.chart.offsetHeight;
-
-            // 清空
-            ctx.clearRect(0, 0, w, h);
-
-            // 画网格
-            ctx.strokeStyle = '#333';
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            for(let i=0; i<w; i+=40) { ctx.moveTo(i,0); ctx.lineTo(i,h); }
-            for(let i=0; i<h; i+=40) { ctx.moveTo(0,i); ctx.lineTo(w,i); }
-            ctx.stroke();
-
-            // 画阈值线
-            const dangerY = h - (state.threshold / state.maxTemp * h);
-            ctx.strokeStyle = 'rgba(255, 0, 0, 0.5)';
-            ctx.setLineDash([5, 5]);
-            ctx.beginPath();
-            ctx.moveTo(0, dangerY);
-            ctx.lineTo(w, dangerY);
-            ctx.stroke();
-            ctx.setLineDash([]);
-
-            // 画折线
-            ctx.strokeStyle = state.temperature > state.threshold ? '#ff3333' : '#00ff41';
-            ctx.lineWidth = 2;
-            ctx.shadowColor = state.temperature > state.threshold ? '#ff3333' : '#00ff41';
-            ctx.shadowBlur = 10;
-            
-            ctx.beginPath();
-            const step = w / (state.history.length - 1);
-            
-            state.history.forEach((val, index) => {
-                const y = h - (val / state.maxTemp * h);
-                const x = index * step;
-                if (index === 0) ctx.moveTo(x, y);
-                else ctx.lineTo(x, y);
-            });
-            ctx.stroke();
-            
-            // 可以在右侧画一个当前点
-            ctx.fillStyle = '#fff';
-            ctx.beginPath();
-            ctx.arc(w-2, h - (state.temperature / state.maxTemp * h), 2, 0, Math.PI*2);
-            ctx.fill();
-        }
-
-        // 初始化日志
-        addLog("SYSTEM BOOT SEQUENCE INITIATED");
-        setTimeout(() => addLog("DRIVERS LOADED..."), 500);
-        setTimeout(() => addLog("READY FOR OPERATION"), 1000);
+        // Init
+        addLog("SYSTEM POWER ON. STANDBY.");
+        setTimeout(updateChart, 100);
 
     </script>
 </body>
