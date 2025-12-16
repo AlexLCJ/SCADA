@@ -3,10 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Z-TEK 综合工业监控系统 V4.3 (最终完美版)</title>
+    <title>Z-TEK 综合工业监控系统 V4.4 (压强修复版)</title>
     <!-- 引入 Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
+        /* --- 工业字体与核心样式 --- */
         @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
         @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap');
 
@@ -42,6 +43,7 @@
             display: inline-block;
         }
 
+        /* 统一面板样式 */
         .panel {
             background-color: var(--color-panel);
             border: 1px solid var(--color-border);
@@ -49,6 +51,7 @@
             box-shadow: 0 4px 6px rgba(0,0,0,0.4);
             display: flex;
             flex-direction: column;
+            transition: border-color 0.3s;
         }
 
         .panel-header {
@@ -80,6 +83,7 @@
         .status-normal .panel-header { color: var(--accent-temp); }
         .status-warn .panel-header { color: var(--accent-press); }
         .status-alert .panel-header { color: var(--danger); }
+        .status-alert { border-color: var(--danger); } /* 报警时边框变红 */
 
         /* 垂直液罐 */
         .tank-container {
@@ -228,19 +232,33 @@
             <!-- 下半部分：压力与液位 -->
             <div class="row-span-1 grid grid-cols-2 gap-3">
                 
-                <!-- 压力监控 -->
+                <!-- 压力监控 (修改部分：引入 Needle) -->
                 <div class="panel status-warn" id="panel-press">
                     <div class="panel-header">
                         <span>Chamber Pressure</span>
                         <span class="text-xs font-mono opacity-50">P-202</span>
                     </div>
                     <div class="flex-1 bg-black flex flex-col items-center justify-center p-4 relative">
+                        <!-- 仪表盘容器 -->
                         <div class="relative w-48 h-24 mb-4 overflow-hidden">
+                            <!-- 背景圆弧槽 -->
                             <div class="absolute w-40 h-40 border-[15px] border-gray-800 rounded-full top-0 left-4 box-border"></div>
-                            <div id="gauge-press-arc" class="absolute w-40 h-40 border-[15px] border-amber-500 rounded-full top-0 left-4 box-border origin-center" style="transform: rotate(-180deg); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);"></div>
+                            
+                            <!-- 装饰：刻度线 -->
+                            <div class="absolute w-44 h-44 rounded-full top-[-8px] left-[8px] border border-gray-700 opacity-50"></div>
+
+                            <!-- 指针 (Needle) - 旋转中心在圆心 -->
+                            <!-- 左边距计算: w-48(192px), 中心96px. Needle宽4px, left: 94px.
+                                 高度计算: 圆心在top 80px处 (w-40/2). 指针长度75px. top: 5px.
+                             -->
+                            <div id="gauge-needle" class="absolute w-1 h-[75px] bg-red-500 origin-bottom transition-transform duration-100 ease-out" 
+                                 style="left: 96px; top: 5px; transform: rotate(-90deg);"></div>
+                            
+                            <!-- 圆心遮罩 -->
+                            <div class="absolute w-6 h-6 bg-gray-600 rounded-full top-[72px] left-[93px] border-2 border-black z-10"></div>
                         </div>
                         
-                        <div class="text-center z-10 -mt-10">
+                        <div class="text-center z-10 -mt-8">
                             <!-- 核心识别目标 2 -->
                             <span id="val-press" class="digital-readout text-5xl text-amber-500">00.0</span>
                             <div class="text-gray-500 text-sm font-mono mt-1">MPa</div>
@@ -248,7 +266,7 @@
 
                         <div class="w-full flex justify-between px-8 text-xs text-gray-600 font-mono mt-4">
                             <span>0.0</span>
-                            <span>CRITICAL: 5.0</span>
+                            <span id="press-alert-label">CRITICAL: 4.0</span>
                         </div>
                     </div>
                 </div>
@@ -347,7 +365,7 @@
                     </div>
                 </div>
 
-                <!-- 系统日志 (修改：移除 flex-col-reverse，使用标准流) -->
+                <!-- 系统日志 -->
                 <div class="flex-1 flex flex-col mt-4 min-h-0">
                     <div class="text-gray-500 mb-1 flex-none">EVENT LOG</div>
                     <div id="sys-log" class="flex-1 bg-black border border-gray-700 rounded p-2 text-green-700 font-mono text-[10px] overflow-y-auto">
@@ -371,15 +389,17 @@
             pressLoad: 1.0,
             level: 50.0,
             pumpActive: false,
-            historyTemp: new Array(100).fill(20.0)
+            historyTemp: new Array(100).fill(20.0),
+            pressAlarm: false // 压强报警状态
         };
 
-        // --- DOM 元素引用 (初始化时获取一次，避免undefined错误) ---
+        // --- DOM 元素引用 ---
         const dom = {
             valTemp: document.getElementById('val-temp'),
             barTemp: document.getElementById('bar-temp'),
             valPress: document.getElementById('val-press'),
-            gaugePress: document.getElementById('gauge-press-arc'),
+            panelPress: document.getElementById('panel-press'), // 新增：压强面板引用
+            gaugeNeedle: document.getElementById('gauge-needle'), // 新增：指针引用
             valLevel: document.getElementById('val-level'),
             tankFill: document.getElementById('tank-fill'),
             statusPump: document.getElementById('status-pump'),
@@ -393,10 +413,8 @@
             stateText: document.getElementById('sys-state-text'),
             log: document.getElementById('sys-log'),
             chartTemp: document.getElementById('chart-temp'),
-            // 输入控件
             inputTarget: document.getElementById('input-target-temp'),
             inputPress: document.getElementById('input-press-load'),
-            // 文本标签
             labelTarget: document.getElementById('label-target-temp'),
             labelPress: document.getElementById('label-press-load')
         };
@@ -426,15 +444,14 @@
                 let diff = sys.targetTemp - sys.temp;
                 let change = (diff * 0.02) + (noise * 0.5);
                 
-                // 紧急冷却
                 if (sys.manualCooling) {
-                    change = -5.0 + noise; // 强制快速降温
+                    change = -5.0 + noise;
                 }
-
                 sys.temp += change;
 
-                // 2. 压力逻辑
-                let targetPress = (sys.temp * 0.04) * sys.pressLoad;
+                // 2. 压力逻辑 (物理关联：T * 0.04 * Load)
+                // 确保温度高时压强能超过4.0
+                let targetPress = (sys.temp * 0.04) * sys.pressLoad; 
                 sys.pressure += (targetPress - sys.pressure) * 0.1 + (noise * 0.05);
 
                 // 3. 液位逻辑
@@ -482,10 +499,34 @@
             if (sys.temp > 100) dom.barTemp.className = "h-full bg-red-600 w-0 transition-all duration-300";
             else dom.barTemp.className = "h-full bg-green-600 w-0 transition-all duration-300";
 
-            // Pressure
+            // Pressure (Needle Logic)
             dom.valPress.innerText = sys.pressure.toFixed(1).padStart(4, '0');
-            const gaugeRot = Math.min(sys.pressure * 36, 180) - 180;
-            dom.gaugePress.style.transform = `rotate(${gaugeRot}deg)`;
+            
+            // 0 MPa = -90deg (左)
+            // 2.5 MPa = 0deg (垂直)
+            // 5 MPa = 90deg (右)
+            const needleRot = (sys.pressure / 5.0) * 180 - 90;
+            dom.gaugeNeedle.style.transform = `rotate(${Math.min(Math.max(needleRot, -90), 90)}deg)`;
+
+            // Pressure Alarm Logic (> 4.0 MPa)
+            if (sys.pressure > 4.0) {
+                if (!sys.pressAlarm) {
+                    sys.pressAlarm = true;
+                    dom.panelPress.classList.remove('status-warn');
+                    dom.panelPress.classList.add('status-alert'); // 变红框
+                    dom.valPress.classList.remove('text-amber-500');
+                    dom.valPress.classList.add('text-red-500', 'animate-pulse'); // 变红字+闪烁
+                    addLog("ALARM: PRESSURE CRITICAL (>4.0 MPa)");
+                }
+            } else {
+                if (sys.pressAlarm) {
+                    sys.pressAlarm = false;
+                    dom.panelPress.classList.remove('status-alert');
+                    dom.panelPress.classList.add('status-warn'); // 恢复琥珀色
+                    dom.valPress.classList.remove('text-red-500', 'animate-pulse');
+                    dom.valPress.classList.add('text-amber-500');
+                }
+            }
 
             // Level
             dom.valLevel.innerText = Math.floor(sys.level).toString().padStart(2, '0');
